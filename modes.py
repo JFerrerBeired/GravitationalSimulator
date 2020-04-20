@@ -5,8 +5,7 @@ from pygame.locals import (
 )
 from constants import (
     FPS_CAP, 
-    PLANET_MIN_RADIUS, PLANET_DEFAULT_DENSITY, PLANET_MAX_RADIUS,
-    
+    PLANET_DEFAULT_DENSITY
 )
 import objects
 import utilities
@@ -34,8 +33,8 @@ class DrawMode():
     def new_object(self):
         self.sel_radius = True
         center = pygame.mouse.get_pos()
-        aux_obj = objects.CelestialObject(center,
-        PLANET_MIN_RADIUS, PLANET_DEFAULT_DENSITY)
+        aux_obj = objects.CelestialObject(center, 0, PLANET_DEFAULT_DENSITY) #set radius to 0 so the initializer will set PLANET_MIN_RADIUS
+        aux_arrow = pygame.sprite.Sprite()
         
         while self.running:
             for event in pygame.event.get():
@@ -44,7 +43,6 @@ class DrawMode():
                     return
                 elif event.type == MOUSEBUTTONDOWN and event.button == 1:
                     self.sel_arrow = False
-                    self.GC.arrow.empty()
                     aux_obj.set_velocity((0,0)) #TODO: calculate proportional to the lenght of the arrow
                     return
  
@@ -52,24 +50,22 @@ class DrawMode():
                     self.sel_radius = False
                     self.sel_arrow = True
 
-                   
             if self.sel_radius: #modifies the radius of the celestial object
                 radius = math.floor(utilities.get_distance(center, 
                                                            pygame.mouse.get_pos()))
-                if radius > PLANET_MIN_RADIUS and radius <= PLANET_MAX_RADIUS:
-                # Kills the previously generated sprite and create a new one with 
-                # appropiate radious
-                    aux_obj.kill()
-                    aux_obj = objects.CelestialObject(center,
-                    radius, PLANET_DEFAULT_DENSITY)
+                # Kills the previously generated sprite and create a new one
+                aux_obj.kill()
+                aux_obj = objects.CelestialObject(center,
+                radius, PLANET_DEFAULT_DENSITY)
             
             if self.sel_arrow: #creates an arrow to set the velocity
-                objects.Arrow(center, pygame.mouse.get_pos())
+                aux_arrow = objects.Arrow(center, pygame.mouse.get_pos())
 
             
             self.GC.screen.blit(self.GC.background, (0, 0))
             self.GC.all.draw(self.GC.screen)
-            self.GC.arrow.draw(self.GC.screen)
+            
+            aux_arrow.kill()
             
             pygame.display.flip()
             

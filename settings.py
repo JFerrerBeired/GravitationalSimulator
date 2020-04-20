@@ -16,8 +16,7 @@ class GlobalController():
         self.background.fill(BACKGROUND_COLOR)
         
         self.all = pygame.sprite.RenderUpdates()
-        self.arrow = pygame.sprite.GroupSingle()
         objects.CelestialObject.containers = self.all
-        objects.Arrow.containers = self.arrow
+        objects.Arrow.containers = self.all
         
         

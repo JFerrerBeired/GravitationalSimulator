@@ -36,51 +36,56 @@ class CelestialObject(pygame.sprite.Sprite):
 class Arrow(pygame.sprite.Sprite):
     containers = []
     
-    height = 2*ARROW_CAP_LENGTH * math.tan(math.radians(ARROW_CAP_ANGLE))
-    half_height = math.ceil(height/2) #in case it is odd, gets the central height
-
-    def __init__(self, initialPos, finalPos):
+    def __init__(self, ini_pos, end_pos):
         pygame.sprite.Sprite.__init__(self, self.containers)
         
-        width = utilities.get_distance(initialPos, finalPos)
-       #height calculated only once in class definition since it's not meant to change
-       
-        if width > ARROW_MAX_LENGTH:
-            finalPos = ((finalPos[0] - initialPos[0]) / width * ARROW_MAX_LENGTH + initialPos[0], 
-                        (finalPos[1] - initialPos[1]) / width * ARROW_MAX_LENGTH + initialPos[1])
-            width = utilities.get_distance(initialPos, finalPos)
-       
-        self.image = pygame.Surface((width, self.height), pygame.SRCALPHA).convert_alpha()
-       # self.image = pygame.Surface((width, self.height)).convert()
-       
-        #draws an horizontal arrow (it's easier to calculate) and then rotate it
-        pygame.draw.line(self.image, ARROW_COLOR, (0, self.half_height), 
-                         (width, self.half_height), ARROW_WIDTH)
-        pygame.draw.lines(self.image, ARROW_COLOR, False, 
-                          ((width - ARROW_CAP_LENGTH, 0), (width, self.half_height),
-                           (width - ARROW_CAP_LENGTH, self.height)), ARROW_WIDTH)
+        length = utilities.get_distance(ini_pos, end_pos)
+        if length > ARROW_MAX_LENGTH:
+            end_pos = ((end_pos[0] - ini_pos[0]) / length * ARROW_MAX_LENGTH + ini_pos[0], 
+                        (end_pos[1] - ini_pos[1]) / length * ARROW_MAX_LENGTH + ini_pos[1])
+        length = utilities.get_distance(ini_pos, end_pos)
+        
         #Calculate angle of rotation. Note the inversion of order in the y parameter bc of the inverter positivity of the Y axis
-        angle = math.degrees(math.atan2(initialPos[1] - finalPos[1], 
-                                        finalPos[0] - initialPos[0])) 
-        if angle < 0: angle += 360 #TODO: Think about why doesn't get the rotation if I don't translate it to the [0, 360] interval
-        self.image = pygame.transform.rotate(self.image, angle)
-      
+        arrow_angle = math.atan2(ini_pos[1] - end_pos[1], end_pos[0] - ini_pos[0])
+        cap_angle = utilities.normalize_angle(math.radians(ARROW_CAP_ANGLE))
+        
+        cap_projection = []
+        
+     #   cap_projection = max(  )
+        
+        width = math.fabs(math.ceil(length * math.cos(arrow_angle)))
+        height = math.fabs(math.ceil(length * math.sin(arrow_angle))) #TODO: take into account the possible offset of the cap
+        
+        self.image = pygame.Surface((width, height), pygame.SRCALPHA).convert_alpha()
+       # self.image = pygame.Surface((width, height)).convert()
+       
+       #Sets the rect to the blit position and initial and end_pos to positions relative to this surface
         self.rect = self.image.get_rect()
         
-        #set rect position according to the quadrant
+        quadrant = utilities.get_quadrant(arrow_angle)
+        if quadrant == 1:  #first quadrant
+            self.rect.bottomleft = ini_pos
+            ini_pos = (0, height)
+            end_pos = (length*math.cos(arrow_angle), 0)
+        elif quadrant == 2:  #second quadrant
+            self.rect.bottomright = ini_pos
+            ini_pos = (width, height)
+            end_pos = (0, 0)
+        elif quadrant == 3:  #third quadrant
+            self.rect.topright = ini_pos
+            ini_pos = (width, 0)
+            end_pos = (0, height)
+        else:  #fourth quadrant
+            self.rect.topleft = ini_pos
+            ini_pos = (0, 0)
+            end_pos = (width, height)
         
-        #TODO: Get this with the correct offset
-        if angle < 90: #first quadrant
-            self.rect.bottomleft = initialPos
-        elif angle < 180: #second quadrant
-            self.rect.bottomright = initialPos
-        elif angle < 270: #third quadrant
-            self.rect.topright = initialPos
-        else: #you get the idea
-            self.rect.topleft = initialPos
-        
-
-               
-    
-        
-        
+            
+        pygame.draw.line(self.image, ARROW_COLOR, ini_pos, end_pos, ARROW_WIDTH)
+        pygame.draw.lines(self.image, ARROW_COLOR, False,  #draw the cap (basic trigonometry)
+                          ((end_pos[0] - ARROW_CAP_LENGTH*math.cos(cap_angle - arrow_angle),
+                           end_pos[1] - ARROW_CAP_LENGTH*math.sin(cap_angle - arrow_angle)),
+                          (end_pos[0], end_pos[1]),
+                          (end_pos[0] - ARROW_CAP_LENGTH*math.cos(cap_angle + arrow_angle),
+                           end_pos[1] + ARROW_CAP_LENGTH*math.sin(cap_angle + arrow_angle))), 
+                          ARROW_WIDTH)

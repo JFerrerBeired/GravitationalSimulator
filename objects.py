@@ -2,7 +2,7 @@ import pygame
 import math
 from constants import (
     PLANET_COLOR, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS,
-    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_WIDTH, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE)
+    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE)
 import utilities
 
 
@@ -38,54 +38,53 @@ class Arrow(pygame.sprite.Sprite):
     
     def __init__(self, ini_pos, end_pos):
         pygame.sprite.Sprite.__init__(self, self.containers)
-        
+
         length = utilities.get_distance(ini_pos, end_pos)
         if length > ARROW_MAX_LENGTH:
             end_pos = ((end_pos[0] - ini_pos[0]) / length * ARROW_MAX_LENGTH + ini_pos[0], 
                         (end_pos[1] - ini_pos[1]) / length * ARROW_MAX_LENGTH + ini_pos[1])
         length = utilities.get_distance(ini_pos, end_pos)
         
+        thickness = 1 + 2*math.floor(ARROW_HALF_THICKNESS)
+        
         #Calculate angle of rotation. Note the inversion of order in the y parameter bc of the inverter positivity of the Y axis
         arrow_angle = math.atan2(ini_pos[1] - end_pos[1], end_pos[0] - ini_pos[0])
         cap_angle = utilities.normalize_angle(math.radians(ARROW_CAP_ANGLE))
+        offset = math.ceil(ARROW_CAP_LENGTH * math.sin(cap_angle))  #Worst case scenario. Adds this quantity to the size of rect
         
-        cap_projection = []
+        projection = (math.fabs(math.ceil(length * math.cos(arrow_angle))), 
+                      math.fabs(math.ceil(length * math.sin(arrow_angle))))
         
-     #   cap_projection = max(  )
-        
-        width = math.fabs(math.ceil(length * math.cos(arrow_angle)))
-        height = math.fabs(math.ceil(length * math.sin(arrow_angle))) #TODO: take into account the possible offset of the cap
+        width = projection[0] + 2*offset
+        height = projection[1] + 2*offset
         
         self.image = pygame.Surface((width, height), pygame.SRCALPHA).convert_alpha()
-       # self.image = pygame.Surface((width, height)).convert()
-       
-       #Sets the rect to the blit position and initial and end_pos to positions relative to this surface
+      #  self.image = pygame.Surface((width, height)).convert()
         self.rect = self.image.get_rect()
         
         quadrant = utilities.get_quadrant(arrow_angle)
         if quadrant == 1:  #first quadrant
-            self.rect.bottomleft = ini_pos
-            ini_pos = (0, height)
-            end_pos = (length*math.cos(arrow_angle), 0)
+            ini_arrow = (offset, projection[1] + offset)
+            end_arrow = (projection[0] + offset, offset)
+            self.rect.bottomleft = (ini_pos[0] - offset, ini_pos[1] + offset)
         elif quadrant == 2:  #second quadrant
-            self.rect.bottomright = ini_pos
-            ini_pos = (width, height)
-            end_pos = (0, 0)
+            ini_arrow = (projection[0] + offset, projection[1] + offset)
+            end_arrow = (offset, offset)
+            self.rect.bottomright = (ini_pos[0] + offset, ini_pos[1] + offset)         
         elif quadrant == 3:  #third quadrant
-            self.rect.topright = ini_pos
-            ini_pos = (width, 0)
-            end_pos = (0, height)
+            ini_arrow = (projection[0] + offset, offset)
+            end_arrow = (offset, projection[1] + offset)
+            self.rect.topright = (ini_pos[0] + offset, ini_pos[1] - offset)           
         else:  #fourth quadrant
-            self.rect.topleft = ini_pos
-            ini_pos = (0, 0)
-            end_pos = (width, height)
-        
+            ini_arrow = (offset, offset)
+            end_arrow = (projection[0] + offset, projection[1] + offset)
+            self.rect.topleft = (ini_pos[0] - offset, ini_pos[1] - offset)
             
-        pygame.draw.line(self.image, ARROW_COLOR, ini_pos, end_pos, ARROW_WIDTH)
+        pygame.draw.line(self.image, ARROW_COLOR, ini_arrow, end_arrow, thickness)
         pygame.draw.lines(self.image, ARROW_COLOR, False,  #draw the cap (basic trigonometry)
-                          ((end_pos[0] - ARROW_CAP_LENGTH*math.cos(cap_angle - arrow_angle),
-                           end_pos[1] - ARROW_CAP_LENGTH*math.sin(cap_angle - arrow_angle)),
-                          (end_pos[0], end_pos[1]),
-                          (end_pos[0] - ARROW_CAP_LENGTH*math.cos(cap_angle + arrow_angle),
-                           end_pos[1] + ARROW_CAP_LENGTH*math.sin(cap_angle + arrow_angle))), 
-                          ARROW_WIDTH)
+                          ((end_arrow[0] - ARROW_CAP_LENGTH*math.cos(cap_angle - arrow_angle),
+                           end_arrow[1] - ARROW_CAP_LENGTH*math.sin(cap_angle - arrow_angle)),
+                           end_arrow,
+                          (end_arrow[0] - ARROW_CAP_LENGTH*math.cos(cap_angle + arrow_angle),
+                           end_arrow[1] + ARROW_CAP_LENGTH*math.sin(cap_angle + arrow_angle))), 
+                          thickness)

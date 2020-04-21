@@ -1,7 +1,9 @@
 import math
 import pygame
 from pygame.locals import (
-    QUIT, MOUSEBUTTONDOWN, MOUSEBUTTONUP
+    QUIT, 
+    MOUSEBUTTONDOWN, MOUSEBUTTONUP, KEYDOWN,
+    K_SPACE
 )
 from constants import (
     FPS_CAP, 
@@ -79,6 +81,9 @@ class DrawMode():
                     return self
                 elif event.type == MOUSEBUTTONDOWN and event.button == 1:
                     self.new_object()
+                elif event.type == KEYDOWN and event.key == K_SPACE:
+                    for sprite in self.GC.all:
+                        sprite.kill()
             
             self.GC.screen.blit(self.GC.background, (0, 0))
             self.GC.all.draw(self.GC.screen)

@@ -1,8 +1,10 @@
 import pygame
 import math
 from constants import (
-    PLANET_COLOR, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS,
-    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE)
+    SCREEN_WIDTH, SCREEN_HEIGHT,
+    PLANET_COLOR, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS, PLANET_MAX_DISTANCE,
+    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE
+)
 import utilities
 
 
@@ -29,9 +31,23 @@ class CelestialObject(pygame.sprite.Sprite):
         pygame.draw.circle(self.image, PLANET_COLOR, 
                            (self.radius, self.radius), self.radius)
         
+        self.vel = [0, 0]
+        self.pos = [position[0], position[1]]
+        
     def set_velocity(self, vel):
-        self.vel_x = vel[0]
-        self.vel_y = vel[1]
+        self.vel[0] = vel[0]
+        self.vel[1] = vel[1]
+        
+    def update(self):
+        self.pos[0] += self.vel[0]
+        self.pos[1] += self.vel[1]
+        self.rect.center = (self.pos[0], self.pos[1])
+        
+        #if it gets too far away, gets destroyed
+        if utilities.get_distance((SCREEN_WIDTH/2, SCREEN_HEIGHT/2), 
+                                  (self.rect.centerx, self.rect.centery)) > PLANET_MAX_DISTANCE:
+            self.kill()
+        
         
 class Arrow(pygame.sprite.Sprite):
     containers = []
@@ -52,11 +68,12 @@ class Arrow(pygame.sprite.Sprite):
         cap_angle = utilities.normalize_angle(math.radians(ARROW_CAP_ANGLE))
         offset = math.ceil(ARROW_CAP_LENGTH * math.sin(cap_angle))  #Worst case scenario. Adds this quantity to the size of rect
         
-        projection = (math.fabs(math.ceil(length * math.cos(arrow_angle))), 
-                      math.fabs(math.ceil(length * math.sin(arrow_angle))))
+        self.component = (length * math.cos(arrow_angle), length * math.sin(arrow_angle))
+        projection = (math.fabs(math.ceil(self.component[0])), 
+                      math.fabs(math.ceil(self.component[1])))
         
-        width = projection[0] + 2*offset
-        height = projection[1] + 2*offset
+        width = math.fabs(projection[0]) + 2*offset
+        height = math.fabs(projection[1]) + 2*offset
         
         self.image = pygame.Surface((width, height), pygame.SRCALPHA).convert_alpha()
       #  self.image = pygame.Surface((width, height)).convert()
@@ -88,3 +105,4 @@ class Arrow(pygame.sprite.Sprite):
                           (end_arrow[0] - ARROW_CAP_LENGTH*math.cos(cap_angle + arrow_angle),
                            end_arrow[1] + ARROW_CAP_LENGTH*math.sin(cap_angle + arrow_angle))), 
                           thickness)
+        

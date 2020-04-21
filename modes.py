@@ -7,7 +7,8 @@ from pygame.locals import (
 )
 from constants import (
     FPS_CAP, 
-    PLANET_DEFAULT_DENSITY
+    PLANET_DEFAULT_DENSITY,
+    ARROW_TO_VELOCITY_RATIO
 )
 import objects
 import utilities
@@ -36,7 +37,7 @@ class DrawMode():
         self.sel_radius = True
         center = pygame.mouse.get_pos()
         aux_obj = objects.CelestialObject(center, 0, PLANET_DEFAULT_DENSITY) #set radius to 0 so the initializer will set PLANET_MIN_RADIUS
-        aux_arrow = pygame.sprite.Sprite()
+        aux_arrow = pygame.sprite.Sprite() #dummy sprite that can get killed
         
         while self.running:
             for event in pygame.event.get():
@@ -45,7 +46,9 @@ class DrawMode():
                     return
                 elif event.type == MOUSEBUTTONDOWN and event.button == 1:
                     self.sel_arrow = False
-                    aux_obj.set_velocity((0,0)) #TODO: calculate proportional to the lenght of the arrow
+                    aux_obj.set_velocity((ARROW_TO_VELOCITY_RATIO * aux_arrow.component[0],
+                                          - ARROW_TO_VELOCITY_RATIO * aux_arrow.component[1]))
+                    aux_arrow.kill()
                     return
  
                 elif event.type == MOUSEBUTTONUP and event.button == 1:
@@ -61,13 +64,12 @@ class DrawMode():
                 radius, PLANET_DEFAULT_DENSITY)
             
             if self.sel_arrow: #creates an arrow to set the velocity
+                aux_arrow.kill()
                 aux_arrow = objects.Arrow(center, pygame.mouse.get_pos())
 
             
             self.GC.screen.blit(self.GC.background, (0, 0))
             self.GC.all.draw(self.GC.screen)
-            
-            aux_arrow.kill()
             
             pygame.display.flip()
             
@@ -84,6 +86,8 @@ class DrawMode():
                 elif event.type == KEYDOWN and event.key == K_SPACE:
                     for sprite in self.GC.all:
                         sprite.kill()
+                        
+            self.GC.all.update()            
             
             self.GC.screen.blit(self.GC.background, (0, 0))
             self.GC.all.draw(self.GC.screen)

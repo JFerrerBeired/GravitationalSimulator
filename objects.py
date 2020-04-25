@@ -3,16 +3,27 @@ import math
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     PLANET_COLOR, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS, PLANET_MAX_DISTANCE,
-    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE
+    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE,
+    DELTA_T
 )
 import utilities
 
 
 class CelestialObject(pygame.sprite.Sprite):
     containers = []
+    planets = pygame.sprite.Group() #Group that contains all planets created
     
     def __init__(self, position, radius, density):
         pygame.sprite.Sprite.__init__(self, self.containers)
+        
+        #Objects that are affected by this object when calculating forces. 
+        #Note that the presence in the list is not reciprocal because this object will calculate the force for both of them
+        self.neighbours = pygame.sprite.Group()
+        
+        for obj in self.planets:
+            obj.neighbours.add(self)
+            
+        self.planets.add(self)
         
         if radius > PLANET_MAX_RADIUS:
             self.radius = PLANET_MAX_RADIUS
@@ -21,9 +32,9 @@ class CelestialObject(pygame.sprite.Sprite):
         else:
             self.radius = radius
         
-        self.mass = density*radius**3 #not real mass, but proportional to it (missing 4/3*PI)
+        self.mass = density*self.radius**3 #not real mass, but proportional to it (missing 4/3*PI)
         size = 2*self.radius + 1
-        
+
         #self.image = pygame.Surface((size, size)).convert()
         self.image = pygame.Surface((size, size), pygame.SRCALPHA).convert_alpha()
         self.rect = self.image.get_rect(center=position)
@@ -31,16 +42,43 @@ class CelestialObject(pygame.sprite.Sprite):
         pygame.draw.circle(self.image, PLANET_COLOR, 
                            (self.radius, self.radius), self.radius)
         
+        self.F = [0, 0]
+        self.acc = [0, 0]
         self.vel = [0, 0]
         self.pos = [position[0], position[1]]
         
     def set_velocity(self, vel):
         self.vel[0] = vel[0]
         self.vel[1] = vel[1]
+    
+    def get_force(self, obj):
+        '''Return the force between self and obj.'''
+
+        vect = [obj.pos[0] - self.pos[0], obj.pos[1] - self.pos[1]]
+        factor = self.mass * obj.mass / utilities.get_distance(self.pos, obj.pos)**3 #Power of 3 because the directional vector is not normalized
+        
+        return (vect[0] * factor, vect[1] * factor)
+    
+    def integration_euler(self):
+        for obj in self.neighbours:
+            f = self.get_force(obj)
+
+            self.F[0] += f[0]
+            self.F[1] += f[1]
+            obj.F[0] -= f[0]
+            obj.F[1] -= f[1]
+            
+        self.acc[0] = self.F[0] / self.mass
+        self.acc[1] = self.F[1] / self.mass
+        
+        self.pos[0] += self.vel[0] * DELTA_T + 0.5 * self.acc[0] * DELTA_T
+        self.pos[1] += self.vel[1] * DELTA_T + 0.5 * self.acc[1] * DELTA_T
+        
+        self.vel[0] += self.acc[0] * DELTA_T
+        self.vel[1] += self.acc[1] * DELTA_T
         
     def update(self):
-        self.pos[0] += self.vel[0]
-        self.pos[1] += self.vel[1]
+        self.integration_euler()
         self.rect.center = (self.pos[0], self.pos[1])
         
         #if it gets too far away, gets destroyed

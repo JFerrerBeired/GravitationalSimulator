@@ -7,8 +7,7 @@ from pygame.locals import (
 )
 from constants import (
     FPS_CAP, 
-    PLANET_DEFAULT_DENSITY,
-    ARROW_TO_VELOCITY_RATIO
+    PLANET_DEFAULT_DENSITY
 )
 import objects
 import utilities
@@ -44,10 +43,14 @@ class DrawMode():
                 if event.type == QUIT:
                     pygame.event.post(event) #I put it back in so it can exit cleanly in the main loop
                     return
-                elif event.type == MOUSEBUTTONDOWN and event.button == 1:
-                    self.sel_arrow = False
-                    aux_obj.set_velocity((ARROW_TO_VELOCITY_RATIO * aux_arrow.component[0],
-                                          - ARROW_TO_VELOCITY_RATIO * aux_arrow.component[1]))
+                elif event.type == MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.sel_arrow = False
+                        aux_obj.set_velocity_from_arrow((aux_arrow.component[0], - aux_arrow.component[1]))
+                    elif event.button == 3:
+                        self.sel_arrow = False
+                        aux_obj.set_velocity_from_arrow((0, 0))
+                    
                     aux_arrow.kill()
                     return
  

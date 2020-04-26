@@ -3,7 +3,10 @@ import math
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT,
     PLANET_COLOR, PLANET_MIN_RADIUS, PLANET_MAX_RADIUS, PLANET_MAX_DISTANCE,
-    ARROW_COLOR, ARROW_MAX_LENGTH, ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE,
+    ARROW_COLOR_VEL, ARROW_COLOR_ACC, ARROW_MAX_LENGTH, 
+    ARROW_HALF_THICKNESS, ARROW_CAP_LENGTH, ARROW_CAP_ANGLE,
+    SMALL_ARROW_HALF_THICKNESS, SMALL_ARROW_CAP_LENGTH, SMALL_ARROW_CAP_ANGLE,
+    ARROW_TO_VEL_RATIO, ARROW_TO_ACC_RATIO,
     DELTA_T
 )
 import utilities
@@ -19,6 +22,8 @@ class CelestialObject(pygame.sprite.Sprite):
         #Objects that are affected by this object when calculating forces. 
         #Note that the presence in the list is not reciprocal because this object will calculate the force for both of them
         self.neighbours = pygame.sprite.Group()
+        self.arrow_vel = pygame.sprite.Sprite()
+        self.arrow_acc = pygame.sprite.Sprite()
         
         for obj in self.planets:
             obj.neighbours.add(self)
@@ -47,9 +52,10 @@ class CelestialObject(pygame.sprite.Sprite):
         self.vel = [0, 0]
         self.pos = [position[0], position[1]]
         
-    def set_velocity(self, vel):
-        self.vel[0] = vel[0]
-        self.vel[1] = vel[1]
+    def set_velocity_from_arrow(self, vel):
+        '''Takes the length of an arrow and sets the velocity proportional to it.'''
+        self.vel[0] = vel[0] * ARROW_TO_VEL_RATIO
+        self.vel[1] = vel[1] * ARROW_TO_VEL_RATIO
     
     def get_force(self, obj):
         '''Return the force between self and obj.'''
@@ -60,6 +66,10 @@ class CelestialObject(pygame.sprite.Sprite):
         return (vect[0] * factor, vect[1] * factor)
     
     def integration_euler(self):
+        '''Calculates the new position and velocity using Euler integration method.
+        
+        The force is also added to the other object so it doesn't have to be 
+        calculated twice.'''
         for obj in self.neighbours:
             f = self.get_force(obj)
 
@@ -77,10 +87,31 @@ class CelestialObject(pygame.sprite.Sprite):
         self.vel[0] += self.acc[0] * DELTA_T
         self.vel[1] += self.acc[1] * DELTA_T
         
+        self.F = [0, 0] #resets force for the next iteration
+        
     def update(self):
+        '''Calculates new position and velocity of the object and all the calculations derived from that.'''
         self.integration_euler()
         self.rect.center = (self.pos[0], self.pos[1])
+   
+        self.arrow_vel.kill()
+        self.arrow_acc.kill()
         
+        self.arrow_vel = Arrow((self.pos[0], self.pos[1]), 
+                                (self.pos[0] + self.vel[0]/ARROW_TO_VEL_RATIO, 
+                                 self.pos[1] + self.vel[1]/ARROW_TO_VEL_RATIO),
+                                 half_thickness = SMALL_ARROW_HALF_THICKNESS, 
+                                 cap_angle = SMALL_ARROW_CAP_ANGLE, 
+                                 cap_length = SMALL_ARROW_CAP_LENGTH)
+        
+        self.arrow_acc = Arrow((self.pos[0], self.pos[1]), 
+                                (self.pos[0] + self.acc[0]/ARROW_TO_ACC_RATIO, 
+                                 self.pos[1] + self.acc[1]/ARROW_TO_ACC_RATIO),
+                                 color = ARROW_COLOR_ACC, 
+                                 half_thickness = SMALL_ARROW_HALF_THICKNESS, 
+                                 cap_angle = SMALL_ARROW_CAP_ANGLE, 
+                                 cap_length = SMALL_ARROW_CAP_LENGTH)
+    
         #if it gets too far away, gets destroyed
         if utilities.get_distance((SCREEN_WIDTH/2, SCREEN_HEIGHT/2), 
                                   (self.rect.centerx, self.rect.centery)) > PLANET_MAX_DISTANCE:
@@ -90,7 +121,7 @@ class CelestialObject(pygame.sprite.Sprite):
 class Arrow(pygame.sprite.Sprite):
     containers = []
     
-    def __init__(self, ini_pos, end_pos):
+    def __init__(self, ini_pos, end_pos, color = ARROW_COLOR_VEL, half_thickness = ARROW_HALF_THICKNESS, cap_angle = ARROW_CAP_ANGLE, cap_length = ARROW_CAP_LENGTH):
         pygame.sprite.Sprite.__init__(self, self.containers)
 
         length = utilities.get_distance(ini_pos, end_pos)
@@ -99,12 +130,12 @@ class Arrow(pygame.sprite.Sprite):
                         (end_pos[1] - ini_pos[1]) / length * ARROW_MAX_LENGTH + ini_pos[1])
         length = utilities.get_distance(ini_pos, end_pos)
         
-        thickness = 1 + 2*math.floor(ARROW_HALF_THICKNESS)
+        thickness = 1 + 2*math.floor(half_thickness)
         
         #Calculate angle of rotation. Note the inversion of order in the y parameter bc of the inverter positivity of the Y axis
         arrow_angle = math.atan2(ini_pos[1] - end_pos[1], end_pos[0] - ini_pos[0])
-        cap_angle = utilities.normalize_angle(math.radians(ARROW_CAP_ANGLE))
-        offset = math.ceil(ARROW_CAP_LENGTH * math.sin(cap_angle))  #Worst case scenario. Adds this quantity to the size of rect
+        cap_angle = utilities.normalize_angle(math.radians(cap_angle))
+        offset = math.ceil(cap_length * math.sin(cap_angle))  #Worst case scenario. Adds this quantity to the size of rect
         
         self.component = (length * math.cos(arrow_angle), length * math.sin(arrow_angle))
         projection = (math.fabs(math.ceil(self.component[0])), 
@@ -135,12 +166,12 @@ class Arrow(pygame.sprite.Sprite):
             end_arrow = (projection[0] + offset, projection[1] + offset)
             self.rect.topleft = (ini_pos[0] - offset, ini_pos[1] - offset)
             
-        pygame.draw.line(self.image, ARROW_COLOR, ini_arrow, end_arrow, thickness)
-        pygame.draw.lines(self.image, ARROW_COLOR, False,  #draw the cap (basic trigonometry)
-                          ((end_arrow[0] - ARROW_CAP_LENGTH*math.cos(cap_angle - arrow_angle),
-                           end_arrow[1] - ARROW_CAP_LENGTH*math.sin(cap_angle - arrow_angle)),
+        pygame.draw.line(self.image, color, ini_arrow, end_arrow, thickness)
+        pygame.draw.lines(self.image, color, False,  #draw the cap (basic trigonometry)
+                          ((end_arrow[0] - cap_length * math.cos(cap_angle - arrow_angle),
+                           end_arrow[1] - cap_length * math.sin(cap_angle - arrow_angle)),
                            end_arrow,
-                          (end_arrow[0] - ARROW_CAP_LENGTH*math.cos(cap_angle + arrow_angle),
-                           end_arrow[1] + ARROW_CAP_LENGTH*math.sin(cap_angle + arrow_angle))), 
+                          (end_arrow[0] - cap_length * math.cos(cap_angle + arrow_angle),
+                           end_arrow[1] + cap_length * math.sin(cap_angle + arrow_angle))), 
                           thickness)
         

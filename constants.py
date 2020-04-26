@@ -6,7 +6,7 @@ FPS_CAP = 60
 BACKGROUND_COLOR = (200, 200, 200)
 
 #SIMULATOR PARAMETERS
-PLANET_DEFAULT_DENSITY = 0.0005
+PLANET_DEFAULT_DENSITY = 0.005
 PLANET_MAX_DISTANCE = 3000 #distance an object can get away from the center of the screen
 
 DELTA_T = 1 #simulation time between frames
@@ -14,12 +14,17 @@ DELTA_T = 1 #simulation time between frames
 PLANET_MIN_RADIUS = 10
 PLANET_MAX_RADIUS = 100
 
-ARROW_TO_VELOCITY_RATIO = 0.025 #how many pixels/frame a body gets for each pixel of the arrow length
+ARROW_TO_VEL_RATIO = 0.025 #how many pixels/frame a body gets for each pixel of the arrow length
+ARROW_TO_ACC_RATIO = 0.0005
 
 ARROW_MAX_LENGTH = 500
 ARROW_HALF_THICKNESS = 2 #pixel offset above and under the central line
 ARROW_CAP_LENGTH = 30 
 ARROW_CAP_ANGLE = 25
+SMALL_ARROW_HALF_THICKNESS = 0
+SMALL_ARROW_CAP_LENGTH = 15 
+SMALL_ARROW_CAP_ANGLE = 20
 
-PLANET_COLOR = (100, 110, 65)
-ARROW_COLOR = (50, 130, 200)
+PLANET_COLOR = (40, 110, 10)
+ARROW_COLOR_VEL = (50, 130, 200)
+ARROW_COLOR_ACC = (200, 0, 0)
